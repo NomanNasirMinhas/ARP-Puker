@@ -45,11 +45,11 @@ fn main() {
     let mut iface = String::new();
     stdin.lock().read_line(&mut iface).unwrap();
     // let input = input.trim();
-    while (!valid_ip_addresses.contains_key(iface.trim())) {
+    while !valid_ip_addresses.contains_key(iface.trim()) {
         println!("Invalid interface selected. Please try again.");
         iface = String::new();
         stdin.lock().read_line(&mut iface).unwrap();
-        let iface = iface.trim();
+        iface = iface.trim().to_owned();
     }
     let ip = valid_ip_addresses.get(iface.trim()).unwrap();
     println!("You selected interface {} with IP {}", iface, ip);
@@ -70,26 +70,30 @@ fn main() {
 // scans for devices on a given interface and returns a vector of IP addresses
 fn scan_devices(interface: &str) -> Vec<(String, String)> {
     println!("Scanning on Iface {:?}", interface);
-    let output = Command::new("arp")
-        .arg("-a")
-        .arg("-i")
+
+    // Run arp on the given interface and parse the output
+    let stdout = Command::new("powershell.exe")
+        .arg("-NoProfile")
+        .arg("Get-NetNeighbor")
+        .arg("-InterfaceAlias")
         .arg(interface)
         .output()
         .expect("failed to execute process");
-    let stdout = String::from_utf8(output.stdout).unwrap();
+
+    let stdout = String::from_utf8_lossy(&stdout.stdout);
     
-    let devices: Vec<(String, String)> = stdout
-        .lines()
-        .filter_map(|line| {
-            let cols: Vec<&str> = line.split_whitespace().collect();
-            if cols.len() >= 2 {
-                let ip = cols[1].to_string();
-                Some((ip[1..ip.len()-1].to_string(),cols[3].to_string()))
-            } else {
-                None
-            }
-        })
-        .collect();
+    let mut devices: Vec<(String, String)> = Vec::new();
+    for line in stdout.lines() {
+        let tokens: Vec<&str> = line.split_ascii_whitespace().collect();
+
+        if tokens.len() < 4 || (tokens[1].split(".").count() != 4 && tokens[2].split("-").count() != 6) {
+            continue;
+        }
+        // println!("Line: {:?}", tokens);
+        let ip = tokens[1].trim().to_owned();
+        let mac = tokens[2].trim().to_owned();
+        devices.push((ip.to_string(), mac.to_string()));
+    }
 
     devices
 }
