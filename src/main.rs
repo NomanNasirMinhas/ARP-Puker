@@ -55,16 +55,30 @@ fn main() {
     println!("You selected interface {} with IP {}", iface, ip);
 
     let all_devices = scan_devices(iface.as_str().trim());
-
-    println!("Found {} hosts in the network", all_devices.len());
-    println!("=================================================================");
+    println!("Found {} hosts in the network\n", all_devices.len());
+    // println!("=================================================================");
     for (idx, host) in all_devices.iter().enumerate() {
-        println!("|| {}- {:?} with MAC {:?} ||",idx+1, host.0, host.1);
+        println!("{}- {} with MAC {}",idx+1, host.0.to_owned(), host.1);
         println!("------------------------------------------------------------");
     }
-    println!("=================================================================");
+    // println!("=================================================================");
     println!("Enter the comma separated index number of targets or type 'all' to launch attack for all devices");
-    
+    let mut targets = String::new();
+    stdin.lock().read_line(&mut targets).unwrap();
+    let targets = targets.trim();
+    let mut target_devices: Vec<(String, String)> = Vec::new();
+    if targets == "all" {
+        target_devices = all_devices;
+    } else {
+        let target_indices: Vec<&str> = targets.split(",").collect();
+        for idx in target_indices {
+            let idx = idx.trim().parse::<usize>().unwrap();
+            target_devices.push(all_devices[idx-1].clone());
+        }
+    }
+    println!("{:?} devices selected for attack \n", target_devices.len());
+    println!("Starting ARP Spoofing Attack");
+
 }
 
 // scans for devices on a given interface and returns a vector of IP addresses
